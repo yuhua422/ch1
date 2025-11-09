@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>國語教材網</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 基礎樣式，使用 Inter 字體 */
+        body {
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+            background-color: #f4f7f6; /* 淺灰色背景 */
+        }
+        /* 按鈕過渡效果 */
+        .btn {
+            @apply px-4 py-2 rounded-md shadow-sm transition-all duration-200 ease-in-out;
+        }
+        .btn-primary {
+            @apply bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50;
+        }
+        .btn-secondary {
+            @apply bg-gray-200 text-gray-800 hover:bg-gray-300;
+        }
+        .btn-danger {
+            @apply bg-red-500 text-white hover:bg-red-600;
+        }
+        .btn-danger-outline {
+            @apply bg-transparent border border-red-500 text-red-500 hover:bg-red-500 hover:text-white;
+        }
+        /* 輸入框樣式 */
+        .input-field {
+            @apply w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100;
+        }
+        /* 卡片樣式 */
+        .card {
+            @apply bg-white p-6 rounded-lg shadow-md;
+        }
+    </style>
+</head>
+<body class="antialiased text-gray-900">
+
+    <!-- 主要容器 -->
+    <div class="container mx-auto max-w-4xl p-4 md:p-8">
+
+        <!-- 標題 -->
+        <header class="mb-6">
+            <h1 class="text-3xl font-bold text-blue-700">國語教材網</h1>
+            <p id="status-message" class="text-gray-600">正在連接至 Firebase...</p>
+        </header>
+
+        <!-- 登入畫面 -->
+        <div id="login-screen" class="card">
+            <h2 class="text-xl font-semibold mb-4">使用者登入</h2>
+            <p class="text-gray-700 mb-4">請輸入您的使用者代號（例如：班級、姓名或自訂代號），以存取您的專屬教材資料庫。</p>
+            <div class="space-y-4">
+                <input type="text" id="user-id-input" placeholder="請輸入使用者代號" class="input-field">
+                <button id="login-button" class="btn btn-primary w-full">進入系統</button>
+            </div>
+        </div>
+
+        <!-- 主應用程式畫面 (預設隱藏) -->
+        <div id="app-screen" class="hidden space-y-6">
+            
+            <!-- 使用者資訊 -->
+            <div class="card bg-blue-50 border border-blue-200">
+                <p class="text-blue-800">目前使用者：<span id="current-user-display" class="font-bold"></span></p>
+                <button id="logout-button" class="text-sm text-blue-600 hover:underline mt-1">登出</button>
+            </div>
+
+            <!-- 1. 課程選擇 -->
+            <div class="card">
+                <label for="lesson-select" class="block text-lg font-semibold mb-3">1. 選擇單元</label>
+                <select id="lesson-select" class="input-field">
+                    <option value="">-- 請選擇 --</option>
+                    <!-- 選項將由 JS 動態載入 -->
+                </select>
+            </div>
+
+            <!-- 2. 課程內容區 (預設隱藏，選擇課程後顯示) -->
+            <div id="lesson-content" class="hidden space-y-6">
+                
+                <h2 id="lesson-title" class="text-2xl font-bold text-gray-800"></h2>
+
+                <!-- 模式切換 -->
+                <div class="flex space-x-2">
+                    <button id="show-display-mode" class="btn btn-primary flex-1">展示模式</button>
+                    <button id="show-input-mode" class="btn btn-secondary flex-1">輸入模式</button>
+                </div>
+
+                <!-- 3. 輸入模式 -->
+                <div id="input-mode-section" class="card hidden">
+                    <h3 class="text-xl font-semibold mb-4">輸入新資料</h3>
+                    <form id="add-link-form" class="space-y-4">
+                        <div>
+                            <label for="category-input" class="block text-sm font-medium text-gray-700 mb-1">類別</label>
+                            <input type="text" id="category-input" placeholder="例如：生字、課文、補充影片" class="input-field" required>
+                        </div>
+                        <div>
+                            <label for="url-input" class="block text-sm font-medium text-gray-700 mb-1">網址連結</label>
+                            <input type="url" id="url-input" placeholder="https://..." class="input-field" required>
+                        </div>
+
+                        <!-- *** 新增的複製選項 *** -->
+                        <fieldset class="border border-gray-300 p-4 rounded-md">
+                            <legend class="text-sm font-medium text-gray-700 px-2">複製選項 (選填)</legend>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="copy-to-lesson-select" class="block text-sm font-medium text-gray-700 mb-1">複製到特定單元：</label>
+                                    <select id="copy-to-lesson-select" class="input-field">
+                                        <option value="">-- 不複製 --</option>
+                                        <!-- 選項將由 JS 動態載入 -->
+                                    </select>
+                                </div>
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="copy-to-all-checkbox" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                    <label for="copy-to-all-checkbox" class="ml-2 block text-sm text-gray-900">複製到所有單元</label>
+                                </div>
+                            </div>
+                        </fieldset>
+                        <!-- *** 複製選項結束 *** -->
+
+                        <button type="submit" id="save-link-button" class="btn btn-primary w-full">儲存</button>
+                    </form>
+                </div>
+
+                <!-- 4. 展示模式 -->
+                <div id="display-mode-section" class="card">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-semibold">已存資料</h3>
+                        <button id="clear-all-button" class="btn btn-danger-outline btn-sm">清除本課所有資料</button>
+                    </div>
+                    <ul id="links-list" class="space-y-3">
+                        <!-- 資料將由 JS 動態載入 -->
+                        <li id="no-data-message" class="text-gray-500">目前沒有資料。</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        // 從 Firebase SDK 匯入所需的功能
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, setLogLevel, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- 1. Firebase 設定 ---
+        // 使用您提供的 Firebase 設定
+        const firebaseConfig = {
+            apiKey: "AIzaSyBCXgzXtHjAfvLz_PqhF9gdheSVYAgi5YA",
+            authDomain: "chinese-8bfae.firebaseapp.com",
+            projectId: "chinese-8bfae",
+            storageBucket: "chinese-8bfae.firebasestorage.app",
+            messagingSenderId: "685951531255",
+            appId: "1:685951531255:web:6194c8663fb198e4cafbf2",
+            measurementId: "G-DLVPL2TFKD"
+        };
+
+        // 從環境變數獲取 app ID
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // 初始化 Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        // 開啟 Firestore 詳細日誌 (便於除錯)
+        setLogLevel('Debug');
+
+        // --- 2. 全域狀態變數 ---
+        let currentUserIdString = null; // 儲存使用者輸入的代號 (例如 "ClassA")
+        let currentLessonKey = null; // 儲存目前選擇的課程 (例如 "lesson_1")
+        let allUserData = {}; // 儲存從 Firestore 來的整個使用者文件資料
+        let unsubscribeLesson = null; // 用來取消 Firestore 的即時監聽
+        let isAuthReady = false; // 追蹤 Firebase 匿名登入是否完成
+
+        // --- 3. DOM 元素參照 ---
+        const statusMessage = document.getElementById('status-message');
+        const loginScreen = document.getElementById('login-screen');
+        const userIdInput = document.getElementById('user-id-input');
+        const loginButton = document.getElementById('login-button');
+        const appScreen = document.getElementById('app-screen');
+        const currentUserDisplay = document.getElementById('current-user-display');
+        const logoutButton = document.getElementById('logout-button');
+        const lessonSelect = document.getElementById('lesson-select');
+        const lessonContent = document.getElementById('lesson-content');
+        const lessonTitle = document.getElementById('lesson-title');
+        const showDisplayModeBtn = document.getElementById('show-display-mode');
+        const showInputModeBtn = document.getElementById('show-input-mode');
+        const inputModeSection = document.getElementById('input-mode-section');
+        const displayModeSection = document.getElementById('display-mode-section');
+        const addLinkForm = document.getElementById('add-link-form');
+        const categoryInput = document.getElementById('category-input');
+        const urlInput = document.getElementById('url-input');
+        const saveLinkButton = document.getElementById('save-link-button');
+        const linksList = document.getElementById('links-list');
+        const noDataMessage = document.getElementById('no-data-message');
+        const clearAllButton = document.getElementById('clear-all-button');
+        
+        // *** 新增的 DOM 參照 ***
+        const copyToLessonSelect = document.getElementById('copy-to-lesson-select');
+        const copyToAllCheckbox = document.getElementById('copy-to-all-checkbox');
+
+
+        // --- 4. 課程資料 ---
+        const lessonOptions = {
+            "lesson_1": "第一課", "lesson_2": "第二課", "lesson_3": "第三課",
+            "lesson_4": "第四課", "lesson_5": "第五課", "lesson_6": "第六課",
+            "lesson_7": "第七課", "lesson_8": "第八課", "lesson_9": "第九課",
+            "lesson_10": "第十課", "lesson_11": "第十一課", "lesson_12": "第十二課",
+            "review_1": "統整活動一", "review_2": "統整活動二", "review_3": "統整活動三", "review_4": "統整活動四",
+            "read_1": "來閱讀一", "read_2": "來閱讀二"
+        };
+
+        // --- 5. 初始化函式 ---
+
+        // 頁面載入時執行
+        window.onload = () => {
+            populateLessonSelector();
+            populateCopyToSelector(); // *** 呼叫新函式 ***
+            setupEventListeners();
+            checkLoginStatus(); // 檢查 sessionStorage 是否有登入
+            handleAnonymousAuth(); // 執行匿名登入
+        };
+
+        // 填入 *主要* 課程下拉選單
+        function populateLessonSelector() {
+            for (const [key, name] of Object.entries(lessonOptions)) {
+                const option = document.createElement('option');
+                option.value = key;
+                option.textContent = name;
+                lessonSelect.appendChild(option);
+            }
+        }
+        
+        // *** 新增: 填入 *複製到* 課程下拉選單 ***
+        function populateCopyToSelector() {
+            for (const [key, name] of Object.entries(lessonOptions)) {
+                const option = document.createElement('option');
+                option.value = key;
+                option.textContent = name;
+                copyToLessonSelect.appendChild(option);
+            }
+        }
+        
+        // 執行 Firebase 匿名登入 (為了取得寫入 public data 的權限)
+        function handleAnonymousAuth() {
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    // 匿名登入成功
+                    isAuthReady = true;
+                    statusMessage.textContent = "已連線至 Firebase。";
+                    console.log("Firebase anonymous auth successful.", user.uid);
+                    // 如果使用者已經輸入了代號，我們就可以開始載入資料
+                    if (currentUserIdString) {
+                        loadUserData();
+                    }
+                } else {
+                    // 登出或失敗
+                    isAuthReady = false;
+                    statusMessage.textContent = "Firebase 連線失敗。";
+                }
+            });
+            
+            // 嘗試登入
+            signInAnonymously(auth).catch((error) => {
+                console.error("Anonymous sign-in failed:", error);
+                statusMessage.textContent = "無法登入 Firebase。";
+            });
+        }
+        
+        // 檢查 sessionStorage 中是否已有使用者代號
+        function checkLoginStatus() {
+            const savedUserId = sessionStorage.getItem('chineseAppUserId');
+            if (savedUserId) {
+                currentUserIdString = savedUserId;
+                showAppScreen();
+            } else {
+                showLoginScreen();
+            }
+        }
+
+        // --- 6. 事件監聽器設定 ---
+        function setupEventListeners() {
+            // 登入按鈕
+            loginButton.addEventListener('click', handleLogin);
+            
+            // 登出按鈕
+            logoutButton.addEventListener('click', handleLogout);
+
+            // 課程選擇
+            lessonSelect.addEventListener('change', handleLessonChange);
+
+            // 模式切換按鈕
+            showDisplayModeBtn.addEventListener('click', () => toggleMode('display'));
+            showInputModeBtn.addEventListener('click', () => toggleMode('input'));
+
+            // 新增資料表單
+            addLinkForm.addEventListener('submit', handleSaveLink);
+
+            // 清除本課所有資料
+            clearAllButton.addEventListener('click', handleClearAll);
+            
+            // *** 新增: 監聽 "複製到所有" 核取方塊 ***
+            copyToAllCheckbox.addEventListener('change', () => {
+                if (copyToAllCheckbox.checked) {
+                    copyToLessonSelect.value = ''; // 清空特定選擇
+                    copyToLessonSelect.disabled = true;
+                } else {
+                    copyToLessonSelect.disabled = false;
+                }
+            });
+        }
+
+        // --- 7. 事件處理函式 ---
+
+        // 處理登入
+        function handleLogin() {
+            const userId = userIdInput.value.trim();
+            if (!userId) {
+                alert("請輸入使用者代號！");
+                return;
+            }
+            currentUserIdString = userId;
+            sessionStorage.setItem('chineseAppUserId', currentUserIdString);
+            showAppScreen();
+        }
+        
+        // 處理登出
+        function handleLogout() {
+            if (unsubscribeLesson) {
+                unsubscribeLesson();
+                unsubscribeLesson = null;
+            }
+            currentUserIdString = null;
+            sessionStorage.removeItem('chineseAppUserId');
+            allUserData = {};
+            currentLessonKey = null;
+            showLoginScreen();
+        }
+
+        // 處理課程變更
+        function handleLessonChange() {
+            currentLessonKey = lessonSelect.value;
+            if (currentLessonKey) {
+                lessonContent.classList.remove('hidden');
+                lessonTitle.textContent = lessonOptions[currentLessonKey];
+                renderDisplayMode(); // 根據新課程重新渲染
+                toggleMode('display'); // 預設顯示展示模式
+            } else {
+                lessonContent.classList.add('hidden');
+            }
+        }
+
+        // *** 修改: 處理儲存新連結 (包含複製邏輯) ***
+        async function handleSaveLink(e) {
+            e.preventDefault();
+            if (!isAuthReady || !currentLessonKey || !currentUserIdString) return;
+
+            const category = categoryInput.value.trim();
+            const url = urlInput.value.trim();
+
+            if (!category || !url) {
+                alert("類別和網址都必須填寫！");
+                return;
+            }
+
+            saveLinkButton.disabled = true;
+            saveLinkButton.textContent = "儲存中...";
+
+            // 1. 建立新連結物件
+            const newLink = {
+                id: crypto.randomUUID(), // 產生唯一 ID
+                category: category,
+                url: url
+            };
+
+            // 2. 決定要更新哪些課別
+            // 使用 Set 來避免重複加入 (例如 "目前課別" 和 "特定課別" 相同)
+            const targetLessonKeys = new Set();
+            
+            // 2a. 永遠加入目前課別
+            targetLessonKeys.add(currentLessonKey);
+            
+            const copyToAll = copyToAllCheckbox.checked;
+            const copyToLesson = copyToLessonSelect.value;
+
+            if (copyToAll) {
+                // 2b. 加入所有課別
+                Object.keys(lessonOptions).forEach(key => targetLessonKeys.add(key));
+            } else if (copyToLesson) {
+                // 2c. 加入特定課別
+                targetLessonKeys.add(copyToLesson);
+            }
+
+            // 3. 準備要寫入 Firestore 的資料
+            // 我們將建立一個物件，key 是課別代號，value 是更新後的連結陣列
+            const updatedDataPayload = {};
+
+            for (const lessonKey of targetLessonKeys) {
+                // 從本地快取 (allUserData) 取得該課別的現有連結
+                const currentLinks = allUserData[lessonKey] || [];
+                // 建立包含新連結的更新陣列
+                updatedDataPayload[lessonKey] = [...currentLinks, newLink];
+            }
+            
+            // 4. 執行 Firestore 寫入
+            try {
+                // 取得 Firestore 文件參照
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'chineseMaterials', currentUserIdString);
+                
+                // 使用 setDoc 搭配 merge: true
+                // 這會將 updatedDataPayload 中的所有 key (課別) 更新到 Firestore 文件
+                // 而不會覆蓋掉其他 (不在 updatedDataPayload 中) 的課別資料
+                await setDoc(docRef, updatedDataPayload, { merge: true });
+                
+                // 5. 成功後清空表單並切換模式
+                addLinkForm.reset();
+                copyToLessonSelect.value = '';
+                copyToAllCheckbox.checked = false;
+                copyToLessonSelect.disabled = false;
+                
+                toggleMode('display');
+
+            } catch (error) {
+                console.error("Error saving link(s):", error);
+                alert("儲存失敗！");
+            } finally {
+                saveLinkButton.disabled = false;
+                saveLinkButton.textContent = "儲存";
+            }
+        }
+        
+        // 處理刪除單一連結 (此函式不需變更)
+        async function handleDeleteLink(linkId) {
+            if (!isAuthReady || !currentLessonKey || !currentUserIdString) return;
+            
+            // 過濾掉要刪除的連結
+            const currentLinks = allUserData[currentLessonKey] || [];
+            const updatedLinks = currentLinks.filter(link => link.id !== linkId);
+            
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'chineseMaterials', currentUserIdString);
+                await setDoc(docRef, { [currentLessonKey]: updatedLinks }, { merge: true });
+                // onSnapshot 會自動觸發並更新 UI
+            } catch (error) {
+                console.error("Error deleting link:", error);
+                alert("刪除失敗！");
+            }
+        }
+        
+        // 處理清除本課所有資料 (此函式不需變更)
+        async function handleClearAll() {
+            if (!currentLessonKey) return;
+            
+            if (!customConfirm("您確定要刪除「" + lessonOptions[currentLessonKey] + "」的所有資料嗎？此動作無法復原。")) {
+                return;
+            }
+            
+            if (!isAuthReady || !currentUserIdString) return;
+
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'chineseMaterials', currentUserIdString);
+                // 將這門課的資料設定為空陣列
+                await setDoc(docRef, { [currentLessonKey]: [] }, { merge: true });
+                // onSnapshot 會自動觸發並更新 UI
+            } catch (error) {
+                console.error("Error clearing all links:", error);
+                alert("清除失敗！");
+            }
+        }
+
+        // --- 8. 資料載入 ---
+
+        // 載入整個使用者的資料 (只在登入後執行一次)
+        function loadUserData() {
+            if (!isAuthReady || !currentUserIdString) {
+                console.log("Auth not ready or user ID not set, skipping data load.");
+                return;
+            }
+
+            // 如果已有監聽，先取消
+            if (unsubscribeLesson) {
+                unsubscribeLesson();
+            }
+
+            // 建立文件參照
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'chineseMaterials', currentUserIdString);
+            
+            statusMessage.textContent = "正在讀取 " + currentUserIdString + " 的資料...";
+
+            // 設定即時監聽
+            unsubscribeLesson = onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    allUserData = docSnap.data();
+                    statusMessage.textContent = "資料已同步。";
+                } else {
+                    // 文件不存在，表示是新使用者
+                    allUserData = {};
+                    statusMessage.textContent = "歡迎使用！這是您的新資料庫。";
+                }
+                
+                // 資料更新後，重新渲染目前課程的顯示
+                if (currentLessonKey) {
+                    renderDisplayMode();
+                }
+
+            }, (error) => {
+                console.error("Error listening to document:", error);
+                statusMessage.textContent = "讀取資料失敗！";
+            });
+        }
+
+        // --- 9. UI 渲染與控制 ---
+
+        // 顯示登入畫面
+        function showLoginScreen() {
+            loginScreen.classList.remove('hidden');
+            appScreen.classList.add('hidden');
+            lessonContent.classList.add('hidden');
+            lessonSelect.value = ''; // 重設下拉選單
+        }
+        
+        // 顯示主應用程式畫面
+        function showAppScreen() {
+            currentUserDisplay.textContent = currentUserIdString;
+            loginScreen.classList.add('hidden');
+            appScreen.classList.remove('hidden');
+            
+            // 只有在 Firebase 匿名登入也緒時才載入資料
+            if (isAuthReady) {
+                loadUserData();
+            }
+        }
+
+        // 切換模式 (display / input)
+        function toggleMode(mode) {
+            if (mode === 'input') {
+                inputModeSection.classList.remove('hidden');
+                displayModeSection.classList.add('hidden');
+                showInputModeBtn.classList.replace('btn-secondary', 'btn-primary');
+                showDisplayModeBtn.classList.replace('btn-primary', 'btn-secondary');
+            } else { // 預設為 'display'
+                inputModeSection.classList.add('hidden');
+                displayModeSection.classList.remove('hidden');
+                showInputModeBtn.classList.replace('btn-primary', 'btn-secondary');
+                showDisplayModeBtn.classList.replace('btn-secondary', 'btn-primary');
+            }
+        }
+
+        // 渲染展示模式的列表 (此函式不需變更)
+        function renderDisplayMode() {
+            // 清空現有列表
+            linksList.innerHTML = '';
+            
+            const currentLinks = allUserData[currentLessonKey] || [];
+
+            if (currentLinks.length === 0) {
+                linksList.appendChild(noDataMessage);
+            } else {
+                currentLinks.forEach(link => {
+                    const li = document.createElement('li');
+                    li.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-md border';
+                    
+                    // 連結內容
+                    const linkContent = document.createElement('div');
+                    linkContent.className = 'overflow-hidden mr-2';
+                    
+                    const categoryEl = document.createElement('span');
+                    categoryEl.className = 'font-semibold text-gray-800';
+                    categoryEl.textContent = link.category;
+                    
+                    const urlEl = document.createElement('a');
+                    urlEl.href = link.url;
+                    urlEl.target = '_blank';
+                    urlEl.rel = 'noopener noreferrer';
+                    urlEl.textContent = link.url;
+                    urlEl.className = 'block text-sm text-blue-600 hover:underline truncate';
+                    
+                    linkContent.appendChild(categoryEl);
+                    linkContent.appendChild(urlEl);
+                    
+                    // 刪除按鈕
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = '刪除';
+                    deleteBtn.className = 'btn btn-danger btn-sm flex-shrink-0';
+                    
+                    // 替刪除按鈕加上事件監聽
+                    deleteBtn.onclick = () => handleDeleteLink(link.id);
+                    
+                    li.appendChild(linkContent);
+                    li.appendChild(deleteBtn);
+                    linksList.appendChild(li);
+                });
+            }
+        }
+        
+        // 自訂確認對話框
+        function customConfirm(message) {
+            // 在
+            return confirm(message);
+        }
+
+    </script>
+</body>
+</html>
